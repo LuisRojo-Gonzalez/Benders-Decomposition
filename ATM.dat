@@ -1,0 +1,14 @@
+# probabilities
+param p: 1 2 3 4 5 6 7 :=
+1 0.04 0.09 0.1 0.21 0.27 0.23 0.06;
+
+# random number
+param chi: 1 2 3 4 5 6 7 :=
+1 150 120 110 100 80 60 50;
+
+param q_fix := 0.0011; # fixed cost for money reposition
+
+param c := 0.00025; # cost of money
+
+param l := 21;
+param u := 147;

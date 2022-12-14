@@ -1,0 +1,86 @@
+
+# ----------------------------------------
+# BENDERS DECOMPOSITION FOR
+# ATM PROBLEM
+# ----------------------------------------
+
+reset;
+
+model ATM.mod;
+data ATM.dat;
+
+# option solver osl;
+# option osl_options
+#   'bbdisplay 2 bbdispfreq 100 dspace 500000 pretype 2 simplex 1';
+
+option solver cplex; #cplexamp
+option cplex_options 'mipdisplay 2 mipinterval 100 primal';
+
+/* option omit_zero_rows 1; */
+option display_eps .000001;
+
+# we must define the variables and equations only
+problem Master: x, z, cost, Cut_Defn, r1, r2;
+problem Sub: pi, dual_cost, bound;
+
+suffix unbdd OUT;
+
+let nCUT := 0;
+let z := 0;
+let x_dual := l; # a feasible value for variable
+
+param GAP default Infinity;
+
+repeat { printf "\nITERATION %d\n\n", nCUT+1;
+
+   solve Sub; # we solve de subproblem (dual form)
+   printf "\n";
+
+   # if the subproblem is unbounded we have to add a feasibility cut
+   # to the master problem (remember that if the dual is unbounded
+   # the primal is infeasible)
+   if Sub.result = "unbounded" then { printf "UNBOUNDED\n";
+      let nCUT := nCUT + 1;
+      # implies a feasibility cut
+      let cut_type[nCUT] := "ray";
+      # we transform the Pi variable to the ray that
+      # makes infeasible the dual variable
+      let {i in CASE} Pi[i, nCUT] := pi[i].unbdd;
+      }
+
+   # otherwise (i.e. we have a bounded problem) we add an optimality cut
+   else {
+      # stop criteria
+      if dual_cost == cost or nCUT = 10 then break; # + 0.00001
+
+      # Updating the GAP
+      let GAP := min (GAP, dual_cost - z);
+      option display_1col 0;
+      display GAP, cost;
+      let nCUT := nCUT + 1;
+
+      # implies a optimality cut
+      let cut_type[nCUT] := "point";
+      # we add the (dual) point at which the subproblem has a unbounded
+      # solution
+      let {i in CASE} Pi[i, nCUT] := pi[i];
+      }
+
+   printf "\nRE-SOLVING MASTER PROBLEM\n\n";
+
+   # once we have the kind of cut added, we solve master problem
+   solve Master;
+   printf "\n";
+   option display_1col 20;
+   display x, z;
+
+   display nCUT > solucion.txt;
+   display z, dual_cost, x > solucion.txt;
+
+   # We have to update the dual variable as the solution of this
+   # obtained in the master problem
+   let x_dual := x;
+};
+
+option display_1col 0;
+display dual_cost, x;
